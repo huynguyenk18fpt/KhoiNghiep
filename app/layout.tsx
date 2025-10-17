@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
+
 export const metadata: Metadata = {
   title: "Downing Prevention",
   description: "Web for Downing Prevention",

@@ -5,17 +5,17 @@ import { Button } from "@/components/ui/button";
 
 export default function ProductsPage() {
   const combos = [
-    { id: 1, name: "Combo Cơ Bản", price: "200.000 VND", image: "/COMBO/COMBO-CO-BAN.png" },
+    { id: 1, name: "Combo Cơ Bản", price: "150.000 VND", image: "/COMBO/COMBO-CO-BAN.png" },
     { id: 2, name: "Combo Nâng Cao", price: "400.000 VND", image: "/COMBO/COMBO-NANG-CAO.png" },
-    { id: 3, name: "Combo Rèn Luyện", price: "600.000 VND", image: "/COMBO/COMBO-REN-LUYEN.png" },
+    { id: 3, name: "Combo Rèn Luyện", price: "800.000 VND", image: "/COMBO/COMBO-REN-LUYEN.png" },
   ];
 
   const equiments = [
     { id: 1, name: "Phao tam giác", price: "90.000 VND", image: "/Equiments/Phao-Tay.png" },
-    { id: 2, name: "Kính bơi", price: "40.000 VND", image: "/Equiments/Kinh-boi.png" },
-    { id: 3, name: "Phao tay", price: "50.000 VND", image: "/Equiments/PHAO.png" },
-    { id: 4, name: "Mũ bơi", price: "500.000 VND", image: "/Equiments/MU-BOI.png" },
-    { id: 5, name: "Chân vịt", price: "300.000 VND", image: "/Equiments/CHAN-VIT.png" },
+    { id: 2, name: "Kính bơi", price: "75.000 VND", image: "/Equiments/Kinh-boi.png" },
+    { id: 3, name: "Phao tay", price: "55.000 VND", image: "/Equiments/PHAO.png" },
+    { id: 4, name: "Mũ bơi", price: "50.000 VND", image: "/Equiments/MU-BOI.png" },
+    { id: 5, name: "Chân vịt", price: "500.000 VND", image: "/Equiments/CHAN-VIT.png" },
     { id: 6, name: "Kính lặn", price: "300.000 VND", image: "/Equiments/ONG-THO.png" },
   ];
 
