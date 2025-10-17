@@ -20,7 +20,7 @@ export const videos: SkillVideo[] = [
     description:
       "Trong một buổi đổ ngoài tại hồ nước gần nhà, một nhóm học sinh lớp 6 ra nhau ra hồ chơi. Nam, một học sinh không biết bơi, bị trượt chân rơi xuống khu vực nước sâu",
     thumbnail:
-      "/FINALllll.mp4",
+      "/2.mp4",
   },
   {
     id: 3,
@@ -28,7 +28,7 @@ export const videos: SkillVideo[] = [
     description:
       "Trong một buổi đổ ngoài tại hồ nước gần nhà, một nhóm học sinh lớp 6 ra nhau ra hồ chơi. Nam, một học sinh không biết bơi, bị trượt chân rơi xuống khu vực nước sâu",
     thumbnail:
-      "/FINALllll.mp4",
+      "/3.mp4",
   },
   {
     id: 4,
@@ -36,6 +36,6 @@ export const videos: SkillVideo[] = [
     description:
       "Trong một buổi đổ ngoài tại hồ nước gần nhà, một nhóm học sinh lớp 6 ra nhau ra hồ chơi. Nam, một học sinh không biết bơi, bị trượt chân rơi xuống khu vực nước sâu",
     thumbnail:
-      "/FINALllll.mp4",
+      "/2.mp4",
   },
 ]

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, Suspense } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -26,31 +26,36 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
 
   useEffect(() => {
+    if (initialized) return;
+    
     const initAuth = async () => {
-      const urlToken = searchParams?.get("token");
-      const savedToken = urlToken || localStorage.getItem("token");
+      try {
+        const savedToken = localStorage.getItem("token");
 
-      if (urlToken) {
-        localStorage.setItem("token", urlToken);
-        router.replace(pathname); // remove token khỏi URL
+        if (savedToken) {
+          setToken(savedToken);
+          await fetchProfile(savedToken);
+        }
+
+        if (savedToken) {
+          setToken(savedToken);
+          await fetchProfile(savedToken);
+        }
+      } catch (error) {
+        console.error("Auth init error:", error);
+      } finally {
+        setLoading(false);
+        setInitialized(true); // ← MARK là đã init
       }
-
-      if (savedToken) {
-        setToken(savedToken);
-        await fetchProfile(savedToken);
-      }
-
-      setLoading(false);
     };
 
     initAuth();
-  }, [searchParams, pathname, router]);
+  }, [initialized]);
 
   const fetchProfile = async (token: string) => {
     try {
@@ -98,9 +103,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
-    <Suspense fallback={<div>Đang tải...</div>}>
       <AuthProviderContent>{children}</AuthProviderContent>
-    </Suspense>
   );
 };
 
