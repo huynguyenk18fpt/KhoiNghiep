@@ -6,13 +6,13 @@ const products = [
   {
     id: 1,
     name: "Combo cơ bản",
-    price: "200.000 VND",
+    price: "150.000 VND",
     image: "/COMBO/COMBO-CO-BAN.png",
   },
   {
     id: 2,
     name: "Combo rèn luyện",
-    price: "600.000 VND",
+    price: "800.000 VND",
     image: "/COMBO/COMBO-REN-LUYEN.png",
   },
 ]
