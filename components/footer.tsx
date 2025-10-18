@@ -60,7 +60,7 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/ai" className="hover:text-red-500">
+                  <Link href="/roadmap" className="hover:text-red-500">
                     AI
                   </Link>
                 </li>
