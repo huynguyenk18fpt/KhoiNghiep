@@ -1,5 +1,6 @@
+// app/api/ai/roadmap/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callGeminiWithRetry, extractJson } from "@/lib/ai/gemini";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     const age = parseInt(formData.age);
     const height = parseInt(formData.height);
     const weight = parseInt(formData.weight);
+
     if (Number.isNaN(age) || age < 6) {
       return NextResponse.json({ error: "Tuổi tối thiểu là 6." }, { status: 400 });
     }
@@ -45,22 +47,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Thiếu GEMINI_API_KEY" }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const goalMap: Record<FormData["goal"], string> = {
       swimmingForHealth: "Học bơi để nâng cao sức khỏe",
       rescueSkills: "Học cứu hộ và phòng chống đuối nước",
       sportsSwimming: "Học bơi thể thao",
       "": "Không chọn",
     };
+
     const freqMap: Record<FormData["frequency"], string> = {
       "2timesWeek": "2 buổi/tuần",
       "3timesWeek": "3 buổi/tuần",
       "4timesWeek": "4 buổi/tuần",
       "": "Không chọn",
     };
-    const freqToSessions: Record<FormData["frequency"], number> = {
+
+    const sessionsMap: Record<FormData["frequency"], number> = {
       "2timesWeek": 2,
       "3timesWeek": 3,
       "4timesWeek": 4,
@@ -71,14 +72,14 @@ export async function POST(req: NextRequest) {
 YÊU CẦU BẮT BUỘC VỀ AN TOÀN & HƯỚNG DẪN:
 - Phù hợp độ tuổi ${age}, thể trạng ${weight}kg/${height}cm, trình độ ${formData.skillLevel || "chưa xác định"}.
 - Bệnh nền: ${JSON.stringify(formData.healthStatus)} → 
-  1) KHỞI ĐỘNG kỹ; 2) LUYỆN THỞ nhẹ nhàng; 
-  3) TRÁNH nín thở kéo dài/cường độ cao nếu tim-mạch/HA/hen/khớp; 
-  4) LUÔN có giám sát; 5) BẤT THƯỜNG là dừng và hỏi bác sĩ.
+  1) KHỞI ĐỘNG kỹ; 2) LUYỆN THỞ nhẹ;
+  3) TRÁNH nín thở kéo dài/cường độ cao nếu tim-mạch/HA/hen/khớp;
+  4) LUÔN có giám sát; 5) BẤT THƯỜNG thì dừng và hỏi bác sĩ.
 - Không khuyến khích hành vi nguy hiểm (nhảy cao, nín thở cực hạn, bơi xa bờ, tự cứu hộ khi chưa đào tạo).
 `.trim();
 
     const prompt = `
-Bạn là huấn luyện viên bơi + chuyên gia an toàn bể bơi ở VN. Hãy tạo **lộ trình 8 tuần chi tiết** và chat mở đầu thân thiện.
+Bạn là HLV bơi + chuyên gia an toàn ở Việt Nam. Hãy tạo **lộ trình 8 tuần chi tiết** và đoạn chat mở đầu thân thiện.
 
 INPUT:
 - Tuổi: ${age}
@@ -86,64 +87,62 @@ INPUT:
 - Trình độ: ${formData.skillLevel || "chưa chọn"}
 - Mục tiêu: ${goalMap[formData.goal]}
 - Tần suất: ${freqMap[formData.frequency]}
-- SessionsPerWeek: ${freqToSessions[formData.frequency]}
+- SessionsPerWeek: ${sessionsMap[formData.frequency]}
 - Tiền sử: ${JSON.stringify(formData.healthStatus)}
 
 ${safetyNotes}
 
 YÊU CẦU ĐẦU RA (JSON duy nhất, không kèm giải thích):
 {
-  "message": "markdown mở đầu (2–5 đoạn ngắn, giọng tích cực, nhấn mạnh an toàn)",
+  "message": "markdown mở đầu (2–5 đoạn ngắn, tích cực, nhấn mạnh an toàn)",
   "structured": {
     "title": "ngắn gọn, ví dụ: 'Lộ trình an toàn cho bé X tuổi (có hen suyễn)'",
     "weeklyPlan": [
       {
         "week": 1,
-        "sessionsPerWeek": ${freqToSessions[formData.frequency]},
+        "sessionsPerWeek": ${sessionsMap[formData.frequency]},
         "pool": [
-          {"name":"Bài cụ thể 1","durationMin":30,"drills":["động tác A 3×10","..."]},
-          {"name":"Bài cụ thể 2","durationMin":30,"drills":["..."]}
+          {"name":"Làm quen nước & thở","durationMin":25,"drills":["thở ra dưới nước 3×10","trượt nước 6–8 lần"]},
+          {"name":"Nổi sấp/ngửa hỗ trợ","durationMin":20,"drills":["nổi sao biển 3×20s","đổi tư thế sấp-ngửa"]}
         ],
-        "dry": ["bài khô 1","bài khô 2"],
-        "checkpoints": ["tiêu chí hoàn thành tuần 1"],
-        "notesForConditions": ["lưu ý theo bệnh nền nếu có"]
+        "dry": ["xoay khớp toàn thân 5’","bài core nhẹ 3×20s"],
+        "checkpoints": ["giữ nổi 20–30s","thổi bong bóng dưới nước"],
+        "notesForConditions": ["giảm nhịp nếu có hen/HA cao"]
       },
-      { "week": 2, "...": "tương tự, giữ số buổi/tuần phù hợp" },
-      ...
-      { "week": 8, "...": "tương tự, có bài kiểm tra nhẹ cuối lộ trình" }
+      { "week": 2, "...": "tương tự" },
+      { "week": 3, "...": "tương tự" },
+      { "week": 4, "...": "tương tự" },
+      { "week": 5, "...": "tương tự, thêm tự cứu" },
+      { "week": 6, "...": "tương tự, thêm cứu hộ từ xa" },
+      { "week": 7, "...": "tương tự, mô phỏng tình huống" },
+      { "week": 8, "...": "tổng hợp + kiểm tra nhẹ" }
     ],
-    "safety": ["không bơi một mình","có thiết bị nổi gần","quan sát biển cảnh báo","dừng khi chóng mặt/khó thở"],
-    "dryExercises": ["hít–thở cơ hoành 5–10’/ngày","giãn cơ vai–ngực–lưng sau buổi bơi"],
-    "goalNotes": ["điều chỉnh theo mục tiêu ${goalMap[formData.goal]} và tần suất ${freqMap[formData.frequency]}"]
+    "safety": ["mẹo an toàn 1","mẹo an toàn 2"],
+    "dryExercises": ["bài khô nền tảng"],
+    "goalNotes": ["gợi ý theo mục tiêu ${goalMap[formData.goal]} và tần suất ${freqMap[formData.frequency]}"]
   }
 }
-
-QUY TẮC:
-- Có đủ 8 tuần, dữ liệu cụ thể (phút, số hiệp, mét nếu hợp lý).
-- "notesForConditions" phải phản ánh đúng bệnh nền trong INPUT.
 - Không đưa lời khuyên nguy hiểm.
 `.trim();
 
-    const ai = await model.generateContent(prompt);
-    const raw =
-      typeof ai?.response?.text === "function" ? ai.response.text() : ai?.response?.text;
-    const txt = String(raw || "").trim();
+    const text = await callGeminiWithRetry(apiKey, prompt, {
+      maxRetries: 3,
+      initialDelayMs: 700,
+      multiplier: 2,
+      maxDelayMs: 6000,
+    });
 
-    let json: any = null;
-    try {
-      const jsonStr = txt
-        .replace(/^```json/gi, "")
-        .replace(/^```/gi, "")
-        .replace(/```$/gi, "")
-        .trim();
-      json = JSON.parse(jsonStr);
-    } catch {
-      json = { message: txt, structured: null };
-    }
-
+    const json = extractJson(text) ?? { message: text, structured: null };
     return NextResponse.json(json);
   } catch (err: any) {
     console.error("AI roadmap error:", err);
-    return NextResponse.json({ error: err?.message || "AI error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          err?.message ||
+          "AI error: không thể tạo lộ trình (đã thử retry và fallback model).",
+      },
+      { status: 502 },
+    );
   }
 }
