@@ -1,8 +1,16 @@
-"use client"; 
+"use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }) {
+export default function Form({
+  onSubmit,
+  errors,
+  busy,
+}: {
+  onSubmit: (formData: any) => void;
+  errors?: Record<string, string> | null;
+  busy?: boolean;
+}) {
   const [formData, setFormData] = useState({
     age: "",
     height: "",
@@ -15,38 +23,38 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
       asthma: false,
       jointProblems: false,
       highBloodPressure: false,
-      other: false,  // For any other health issues
-      otherDetails: ""  // Field to capture details if 'other' is selected
+      other: false,
+      otherDetails: "",
     },
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-
     if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked; // Type assertion here
-      setFormData({
-        ...formData,
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({
+        ...prev,
         healthStatus: {
-          ...formData.healthStatus,
-          [name]: checked,  // Update checkbox state
-          otherDetails: name === "other" && !checked ? "" : formData.healthStatus.otherDetails, // Reset 'other' detail if unchecked
+          ...prev.healthStatus,
+          [name]: checked,
+          otherDetails: name === "other" && !checked ? "" : prev.healthStatus.otherDetails,
         },
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     onSubmit(formData);
   };
 
+  const errorText = (k: string) =>
+    errors && errors[k] ? <p className="text-red-600 text-sm mt-1">{errors[k]}</p> : null;
+
   return (
-    <div className="space-y-6">
+    <form className="space-y-6" onSubmit={handleSubmit}>
       <div>
         <label className="block text-gray-700">Độ tuổi:</label>
         <input
@@ -56,8 +64,9 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
           onChange={handleChange}
           className="w-full px-4 py-2 border rounded-md"
           placeholder="Nhập độ tuổi"
-          min="6"
+          min={6}
         />
+        {errorText("age")}
       </div>
 
       <div>
@@ -69,8 +78,9 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
           onChange={handleChange}
           className="w-full px-4 py-2 border rounded-md"
           placeholder="Nhập chiều cao"
-          min="100"
+          min={100}
         />
+        {errorText("height")}
       </div>
 
       <div>
@@ -82,8 +92,24 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
           onChange={handleChange}
           className="w-full px-4 py-2 border rounded-md"
           placeholder="Nhập cân nặng"
-          min="20"
+          min={20}
         />
+        {errorText("weight")}
+      </div>
+
+      <div>
+        <label className="block text-gray-700">Trình độ hiện tại:</label>
+        <select
+          name="skillLevel"
+          value={formData.skillLevel}
+          onChange={handleChange}
+          className="w-full px-4 py-2 border rounded-md"
+        >
+          <option value="">Chọn trình độ</option>
+          <option value="beginner">Mới bắt đầu</option>
+          <option value="intermediate">Đã biết cơ bản</option>
+          <option value="advanced">Thành thạo cơ bản</option>
+        </select>
       </div>
 
       <div>
@@ -116,65 +142,31 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
         </select>
       </div>
 
-      {/* Health Status - Checkbox */}
       <div>
-        <p className="text-gray-700">Tiền sử sức khỏe (chọn những vấn đề bạn gặp phải):</p>
-        <div className="space-y-4">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="heartDisease"
-              checked={formData.healthStatus.heartDisease}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Bệnh tim mạch
-          </label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="asthma"
-              checked={formData.healthStatus.asthma}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Hen suyễn
-          </label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="jointProblems"
-              checked={formData.healthStatus.jointProblems}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Vấn đề về khớp
-          </label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="highBloodPressure"
-              checked={formData.healthStatus.highBloodPressure}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Huyết áp cao
-          </label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="other"
-              checked={formData.healthStatus.other}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Khác
-          </label>
+        <p className="text-gray-700">Tiền sử sức khỏe:</p>
+        <div className="space-y-2">
+          {[
+            { key: "heartDisease", label: "Bệnh tim mạch" },
+            { key: "asthma", label: "Hen suyễn" },
+            { key: "jointProblems", label: "Vấn đề về khớp" },
+            { key: "highBloodPressure", label: "Huyết áp cao" },
+            { key: "other", label: "Khác" },
+          ].map((x) => (
+            <label key={x.key} className="flex items-center">
+              <input
+                type="checkbox"
+                name={x.key}
+                checked={(formData as any).healthStatus[x.key]}
+                onChange={handleChange}
+                className="mr-2"
+              />
+              {x.label}
+            </label>
+          ))}
         </div>
 
-        {/* Only show 'otherDetails' if 'other' checkbox is selected */}
         {formData.healthStatus.other && (
-          <div>
+          <div className="mt-2">
             <label className="block text-gray-700">Vui lòng ghi rõ chi tiết:</label>
             <input
               type="text"
@@ -189,10 +181,10 @@ export default function Form({ onSubmit }: { onSubmit: (formData: any) => void }
       </div>
 
       <div className="text-center">
-        <Button onClick={handleSubmit} size="lg" className="bg-blue-600 hover:bg-blue-700">
-          Bắt đầu hành trình của bạn
+        <Button type="submit" size="lg" className="bg-blue-600 hover:bg-blue-700" disabled={busy}>
+          {busy ? "Đang tạo lộ trình..." : "Bắt đầu hành trình của bạn"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
