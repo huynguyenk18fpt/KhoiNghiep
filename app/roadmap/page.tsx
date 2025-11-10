@@ -31,7 +31,7 @@ export default function RoadmapPage() {
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
-
+  const sessionsPerWeekNum = Number(formData?.frequency || 3);
   // gọi API tạo lộ trình
   const handleFormSubmit = async (data: any) => {
     setFormData(data);
@@ -231,7 +231,9 @@ export default function RoadmapPage() {
               </div>
 
               {/* timeline */}
-              <WeeklyTimeline plan={plan} onAskWeek={askAboutWeek} />
+              <WeeklyTimeline plan={plan} onAskWeek={askAboutWeek}
+               defaultSessionsPerWeek={sessionsPerWeekNum}  // 👈 thêm prop này 
+               />
 
               {/* checklist */}
               <SafetyChecklist safety={plan?.safety} />
