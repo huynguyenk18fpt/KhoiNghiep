@@ -1,142 +1,126 @@
-"use client";
-
-import Link from "next/link";
 import Image from "next/image";
-import { SiFacebook, SiX, SiLinkedin } from "react-icons/si";
+import Link from "next/link";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { SiFacebook } from "react-icons/si";
+
+const navigationLinks = [
+  { href: "/", label: "Trang chủ" },
+  { href: "/skills", label: "Học kỹ năng" },
+  { href: "/news", label: "Tin tức" },
+  { href: "/roadmap", label: "Khám phá lộ trình" },
+  { href: "/products", label: "Sản phẩm" },
+  { href: "/pools", label: "Tìm hồ bơi" },
+];
+
+const productLinks = [
+  { href: "/products", label: "Phao bơi" },
+  { href: "/products", label: "Kính bơi" },
+  { href: "/products", label: "Mũ bơi" },
+  { href: "/products", label: "Combo luyện tập" },
+];
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-50 border-t pt-5 pb-6 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid md:grid-cols-2 gap-12">
-          {/* Left Side - Logo + Description */}
-          <div>
-            <Link href="/" className="inline-block">
-              <div className="relative w-[375px] h-[250px]">
-                <Image
-                  src="/images/LOGO/FLOATY-FULL.png"
-                  alt="Floaty Logo"
-                  fill
-                  priority
-                  className="object-fit-cover"
-                />
-              </div>
+    <footer className="border-t bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_2fr]">
+          <div className="max-w-md">
+            <Link href="/" className="inline-flex items-center">
+              <Image
+                src="/images/LOGO/FLOATY-FULL.png"
+                alt="Floaty"
+                width={180}
+                height={72}
+                className="h-auto w-40 object-contain sm:w-44"
+              />
             </Link>
-            <p className="text-gray-600 mt-4 text-lg leading-relaxed max-w-sm">
-              Chủ động trong mọi tình huống đuối nước
+
+            <p className="mt-4 text-base leading-7 text-gray-600">
+              Chủ động trong mọi tình huống đuối nước với kiến thức, lộ trình
+              luyện tập và thiết bị bơi an toàn cho gia đình.
             </p>
-            <div className="mt-6 space-y-2 text-lg text-gray-600">
-              <div className="flex items-center gap-2">
-                <span>📧</span>
+
+            <div className="mt-6 space-y-3 text-sm text-gray-600">
+              <Link
+                href="mailto:nguyenhhce181330@fpt.edu.vn"
+                className="flex items-center gap-3 transition-colors hover:text-blue-600"
+              >
+                <Mail className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
                 <span>nguyenhhce181330@fpt.edu.vn</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>📞</span>
-                <span>+84 0973124868</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>📍</span>
+              </Link>
+              <Link
+                href="tel:+84973124868"
+                className="flex items-center gap-3 transition-colors hover:text-blue-600"
+              >
+                <Phone className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
+                <span>+84 973 124 868</span>
+              </Link>
+              <div className="flex items-center gap-3">
+                <MapPin className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
                 <span>Thành phố Cần Thơ, Việt Nam</span>
               </div>
             </div>
           </div>
 
-          {/* Right Side - 3 Columns */}
-          <div className="grid grid-cols-3 gap-8">
-            {/* Navigation */}
+          <div className="grid gap-8 sm:grid-cols-3">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">
-                Trang chủ
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+                Điều hướng
               </h3>
-              <ul className="space-y-2 text-base text-gray-600">
-                <li>
-                  <Link href="/skills" className="hover:text-red-500">
-                    Học kỹ năng
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/news" className="hover:text-red-500">
-                    Tin tức
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/roadmap" className="hover:text-red-500">
-                    AI
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/products" className="hover:text-red-500">
-                    Sản phẩm
-                  </Link>
-                </li>
+              <ul className="mt-4 space-y-3 text-sm text-gray-600">
+                {navigationLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="transition-colors hover:text-blue-600"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* Products */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
                 Sản phẩm
               </h3>
-              <ul className="space-y-2 text-base text-gray-600">
-                <li>
-                  <Link
-                    href="/products/life-buoy"
-                    className="hover:text-red-500"
-                  >
-                    Phao bơi
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/products/swimwear"
-                    className="hover:text-red-500"
-                  >
-                    Áo bơi
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/products/accessories"
-                    className="hover:text-red-500"
-                  >
-                    Quần bơi
-                  </Link>
-                </li>
+              <ul className="mt-4 space-y-3 text-sm text-gray-600">
+                {productLinks.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="transition-colors hover:text-blue-600"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* Social */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">
-                Social Profiles
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+                Kết nối
               </h3>
-              <div className="flex gap-4">
+              <div className="mt-4 flex gap-3">
                 <Link
                   href="https://www.facebook.com/profile.php?id=61581006342451"
-                  className="p-2 bg-white border rounded-lg shadow-sm text-gray-600 hover:text-blue-500 hover:shadow-md transition"
+                  aria-label="Facebook"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-white text-gray-600 shadow-sm transition hover:border-blue-200 hover:text-blue-600 hover:shadow-md"
                 >
-                  <SiFacebook size={20} />
-                </Link>
-                <Link
-                  href="#"
-                  className="p-2 bg-white border rounded-lg shadow-sm text-gray-600 hover:text-blue-500 hover:shadow-md transition"
-                >
-                  <SiX size={20} />
-                </Link>
-                <Link
-                  href="#"
-                  className="p-2 bg-white border rounded-lg shadow-sm text-gray-600 hover:text-blue-500 hover:shadow-md transition"
-                >
-                  <SiLinkedin size={20} />
+                  <SiFacebook size={18} />
                 </Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="border-t mt-12 pt-6 text-center text-base text-gray-500">
-          © 2025 Floaty. All rights reserved.
+        <div className="mt-10 flex flex-col gap-3 border-t pt-6 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 Floaty. All rights reserved.</p>
+          <p>Phòng chống đuối nước cho trẻ em và phụ huynh.</p>
         </div>
       </div>
     </footer>
