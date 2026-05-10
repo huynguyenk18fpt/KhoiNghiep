@@ -1,114 +1,85 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import axios from "axios";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { demoAuthStore, type DemoUser, type GoogleLoginProfile } from "@/lib/local-store";
 
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
+type AuthContextType = {
+  user: DemoUser | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (token: string) => Promise<void>;
-  logout: () => void;
-}
+  login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (profile: GoogleLoginProfile) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
+  updateProfile: (user: DemoUser) => Promise<void>;
+  logout: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function AuthProviderContent({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<DemoUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
-
   const router = useRouter();
 
   useEffect(() => {
-    if (initialized) return;
-    
-    const initAuth = async () => {
-      try {
-        const savedToken = localStorage.getItem("token");
+    let active = true;
 
-        if (savedToken) {
-          setToken(savedToken);
-          await fetchProfile(savedToken);
-        }
-
-        if (savedToken) {
-          setToken(savedToken);
-          await fetchProfile(savedToken);
-        }
-      } catch (error) {
-        console.error("Auth init error:", error);
-      } finally {
-        setLoading(false);
-        setInitialized(true); // ← MARK là đã init
-      }
-    };
-
-    initAuth();
-  }, [initialized]);
-
-  const fetchProfile = async (token: string) => {
-    try {
-      const res = await axios.get("http://localhost:5000/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+    demoAuthStore
+      .getSession()
+      .then((session) => {
+        if (active) setUser(session);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-      setUser(res.data.user);
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem("token");
-    }
-  };
 
-  const login = async (token: string) => {
-    localStorage.setItem("token", token);
-    setToken(token);
-    await fetchProfile(token);
-    router.push("/"); // redirect sau login
-  };
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-    setToken(null);
-    router.push("/login");
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user,
-        loading,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      loading,
+      login: async (email: string, password: string) => {
+        const session = await demoAuthStore.login(email, password);
+        setUser(session);
+        router.push("/");
+      },
+      loginWithGoogle: async (profile: GoogleLoginProfile) => {
+        const session = await demoAuthStore.loginWithGoogle(profile);
+        setUser(session);
+        router.push("/");
+      },
+      signup: async (name: string, email: string, password: string) => {
+        const session = await demoAuthStore.signup(name, email, password);
+        setUser(session);
+        router.push("/");
+      },
+      updateProfile: async (nextUser: DemoUser) => {
+        const session = await demoAuthStore.updateProfile(nextUser);
+        setUser(session);
+      },
+      logout: async () => {
+        await demoAuthStore.logout();
+        setUser(null);
+        router.push("/login");
+      },
+    }),
+    [loading, router, user],
   );
-};
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  return (
-      <AuthProviderContent>{children}</AuthProviderContent>
-  );
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
-};
+}
