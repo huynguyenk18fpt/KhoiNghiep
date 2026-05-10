@@ -3,49 +3,59 @@
 import { useState } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import RoadmapForm from "@/components/roadmap/roadmap-form";
+import RoadmapForm, { type RoadmapFormValue } from "@/components/roadmap/roadmap-form";
 import ChatPanel from "@/components/roadmap/chat-panel";
 import WeeklyTimeline from "@/components/roadmap/weekly-timeline";
 import SafetyChecklist from "@/components/roadmap/safety-checklist";
 import GoalNotes from "@/components/roadmap/goal-notes";
-import ChatBubble from "@/components/ChatBubble"; // bạn đã nói là có sẵn
+import ChatBubble from "@/components/ChatBubble";
 
 type ChatMsg = { role: "user" | "ai"; content: string };
 
+type RoadmapPlan = {
+  title?: string;
+  weeklyPlan?: {
+    week: number;
+    sessionsPerWeek?: number;
+    pool?: { name: string; durationMin?: number; drills?: string[] }[];
+    dry?: string[];
+    checkpoints?: string[];
+    notesForConditions?: string[];
+  }[];
+  safety?: string[];
+  dryExercises?: string[];
+  goalNotes?: string[];
+};
+
 type AIResponse = {
   message: string;
-  structured?: {
-    title?: string;
-    weeklyPlan?: any[];
-    safety?: string[];
-    dryExercises?: string[];
-    goalNotes?: string[];
-  } | null;
+  structured?: RoadmapPlan | null;
 };
 
 export default function RoadmapPage() {
-  const [formData, setFormData] = useState<any>(null);
-  const [plan, setPlan] = useState<any>(null); // structured từ AI để render lại
-  const [heroTitle, setHeroTitle] = useState<string>("");
+  const [formData, setFormData] = useState<RoadmapFormValue | null>(null);
+  const [plan, setPlan] = useState<RoadmapPlan | null>(null);
+  const [heroTitle, setHeroTitle] = useState("");
   const [roadmapGenerated, setRoadmapGenerated] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+
   const sessionsPerWeekNum = Number(formData?.frequency || 3);
-  // gọi API tạo lộ trình
-  const handleFormSubmit = async (data: any) => {
+
+  const handleFormSubmit = async (data: RoadmapFormValue) => {
     setFormData(data);
     setRoadmapGenerated(true);
     setLastError(null);
+    setPlan(null);
 
-    const userSummary = `Tạo lộ trình học bơi cho bé ${data.age} tuổi, ${data.height}cm/${data.weight}kg, trình độ ${data.level}, mục tiêu ${data.goal}, ${data.frequency} buổi/tuần${
-      data.healthHistory?.length ? `, tiền sử: ${data.healthHistory.join(", ")}` : ""
+    const userSummary = `Tạo lộ trình học bơi cho học viên ${data.age} tuổi, ${data.height}cm/${data.weight}kg, trình độ ${data.level}, mục tiêu ${data.goal}, ${data.frequency} buổi/tuần${
+      data.healthHistory.length ? `, tiền sử: ${data.healthHistory.join(", ")}` : ""
     }.`;
 
-    // chat mở đầu
     setChatMessages([
       { role: "user", content: userSummary },
-      { role: "ai", content: "Đang tạo lộ trình an toàn và phù hợp cho bạn…" },
+      { role: "ai", content: "Đang tạo lộ trình an toàn và phù hợp cho bạn..." },
     ]);
 
     setIsLoadingAI(true);
@@ -58,80 +68,61 @@ export default function RoadmapPage() {
             age: String(data.age),
             height: String(data.height),
             weight: String(data.weight),
-            // map từ form FE (beginner/intermediate/advanced)
-            skillLevel: (data.level as "beginner" | "intermediate" | "advanced") ?? "",
-            // map từ form FE (suc-khoe / cuu-ho / the-thao) sang BE
+            skillLevel: data.level,
             goal:
-              (data.goal === "suc-khoe"
+              data.goal === "suc-khoe"
                 ? "swimmingForHealth"
                 : data.goal === "cuu-ho"
-                ? "rescueSkills"
-                : data.goal === "the-thao"
-                ? "sportsSwimming"
-                : "") as any,
-            // map tần suất: "2" -> "2timesWeek"
+                  ? "rescueSkills"
+                  : "sportsSwimming",
             frequency:
-              (data.frequency === "2"
+              data.frequency === "2"
                 ? "2timesWeek"
                 : data.frequency === "3"
-                ? "3timesWeek"
-                : data.frequency === "4"
-                ? "4timesWeek"
-                : "") as any,
-            // map healthHistory checkbox
+                  ? "3timesWeek"
+                  : "4timesWeek",
             healthStatus: {
-              heartDisease: data.healthHistory?.includes("heart") ?? false,
-              asthma: data.healthHistory?.includes("asthma") ?? false,
-              jointProblems: data.healthHistory?.includes("joint") ?? false,
-              highBloodPressure: data.healthHistory?.includes("bp") ?? false,
-              other: data.healthHistory?.includes("other") ?? false,
+              heartDisease: data.healthHistory.includes("heart"),
+              asthma: data.healthHistory.includes("asthma"),
+              jointProblems: data.healthHistory.includes("joint"),
+              highBloodPressure: data.healthHistory.includes("bp"),
+              other: data.healthHistory.includes("other"),
               otherDetails: "",
             },
           },
         }),
       });
 
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e?.error || `AI error ${res.status}`);
-      }
+      const dataAI = (await res.json()) as AIResponse & { error?: string };
+      if (!res.ok) throw new Error(dataAI.error || `AI error ${res.status}`);
 
-      const dataAI: AIResponse = await res.json();
-
-      // thay câu "đang tạo..." bằng câu thật từ AI
       setChatMessages((prev) => [
         prev[0],
-        { role: "ai", content: dataAI.message || "Mình đã tạo lộ trình dành riêng cho bạn!" },
+        { role: "ai", content: dataAI.message || "Mình đã tạo lộ trình dành riêng cho bạn." },
       ]);
 
       const structured = dataAI.structured || null;
       setPlan(structured);
-      setHeroTitle(structured?.title || `Lộ trình học bơi an toàn cho bé ${data.age} tuổi`);
+      setHeroTitle(structured?.title || `Lộ trình học bơi an toàn cho học viên ${data.age} tuổi`);
       setLastError(null);
-    } catch (err: any) {
-      const msg = err?.message || "Không tạo được lộ trình (có thể model quá tải).";
-      setChatMessages((prev) => [prev[0], { role: "ai", content: `❌ ${msg}` }]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Không tạo được lộ trình.";
+      setChatMessages((prev) => [prev[0], { role: "ai", content: `Lỗi: ${msg}` }]);
       setLastError(msg);
+    } finally {
+      setIsLoadingAI(false);
     }
-    setIsLoadingAI(false);
   };
 
-  // nút "Thử lại" ở banner
   const retryBuildPlan = () => {
-    if (formData) {
-      void handleFormSubmit(formData);
-    }
+    if (formData) void handleFormSubmit(formData);
   };
 
-  // chat realtime sau khi đã có plan
   const handleSendMessage = async (message: string) => {
     setChatMessages((prev) => [...prev, { role: "user", content: message }]);
 
     if (!plan) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "Vui lòng tạo lộ trình trước khi đặt câu hỏi nhé!" },
-      ]);
+      setChatMessages((prev) => [...prev, { role: "ai", content: "Vui lòng tạo lộ trình trước khi đặt câu hỏi nhé." }]);
       return;
     }
 
@@ -142,31 +133,24 @@ export default function RoadmapPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           structured: plan,
-          history: chatMessages.map((m) => ({ role: m.role, content: m.content })),
+          history: chatMessages.map((item) => ({ role: item.role, content: item.content })),
           userMessage: message,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
+      const data = (await res.json()) as { message?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-      setChatMessages((prev) => [...prev, { role: "ai", content: data.message }]);
-    } catch (e: any) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "ai", content: `❌ ${e?.message || "Lỗi không xác định"}` },
-      ]);
+      setChatMessages((prev) => [...prev, { role: "ai", content: data.message || "Mình chưa có câu trả lời phù hợp." }]);
+    } catch (err) {
+      setChatMessages((prev) => [...prev, { role: "ai", content: `Lỗi: ${err instanceof Error ? err.message : "Không xác định"}` }]);
+    } finally {
+      setIsLoadingAI(false);
     }
-    setIsLoadingAI(false);
   };
 
-  // click từ “Hỏi trợ lý về tuần này”
   const askAboutWeek = (week: number) => {
-    handleSendMessage(
-      `Xin tư vấn điều chỉnh chi tiết cho Tuần ${week} (khối lượng, quãng bơi, bài tập khô).`,
-    );
+    void handleSendMessage(`Xin tư vấn điều chỉnh chi tiết cho tuần ${week}: khối lượng, quãng bơi và bài tập khô.`);
   };
 
   return (
@@ -175,13 +159,10 @@ export default function RoadmapPage() {
 
       <main className="flex-1 pt-8 pb-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 text-[var(--foreground)]">
-              Khám phá Lộ trình Học Bơi An Toàn
-            </h1>
+            <h1 className="text-4xl font-bold mb-4 text-[var(--foreground)]">Khám phá lộ trình học bơi an toàn</h1>
             <p className="text-lg text-muted-foreground">
-              Tạo lộ trình 8 tuần được cá nhân hóa dựa trên độ tuổi, sức khỏe và mục tiêu của bạn
+              Tạo lộ trình 8 tuần được cá nhân hóa dựa trên độ tuổi, sức khỏe và mục tiêu của bạn.
             </p>
           </div>
 
@@ -189,65 +170,41 @@ export default function RoadmapPage() {
             <RoadmapForm onSubmit={handleFormSubmit} />
           ) : (
             <div className="space-y-8">
-              {/* Banner lỗi nếu có */}
               {lastError && (
                 <div className="rounded-xl border bg-amber-50 text-amber-900 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold">Tạm thời chưa tạo được lộ trình</p>
-                      <p className="text-sm mt-1">
-                        {lastError}. Hệ thống đã tự động cấu hình retry + fallback. Bạn có thể bấm
-                        “Thử lại”.
-                      </p>
+                      <p className="text-sm mt-1">{lastError}. Bạn có thể thử lại hoặc kiểm tra cấu hình GEMINI_API_KEY.</p>
                     </div>
-                    <button
-                      onClick={retryBuildPlan}
-                      className="px-3 py-2 rounded-lg border text-amber-900 hover:bg-amber-100"
-                    >
+                    <button onClick={retryBuildPlan} className="px-3 py-2 rounded-lg border text-amber-900 hover:bg-amber-100">
                       Thử lại
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Hero Card */}
               <div className="rounded-2xl p-8 border bg-card">
                 <h2 className="text-2xl font-bold mb-2 text-card-foreground">
-                  {heroTitle || `Lộ trình học bơi an toàn cho bé ${formData?.age} tuổi`}
+                  {heroTitle || `Lộ trình học bơi an toàn cho học viên ${formData?.age} tuổi`}
                 </h2>
                 <p className="text-muted-foreground">
-                  {formData?.frequency} buổi/tuần • Mục tiêu: {formData?.goal} • Trình độ:{" "}
-                  {formData?.level}
+                  {formData?.frequency} buổi/tuần - Mục tiêu: {formData?.goal} - Trình độ: {formData?.level}
                 </p>
               </div>
 
-              {/* chat mở đầu dạng bubble nhỏ */}
               <div className="bg-muted/40 rounded-2xl p-4 border">
-                {chatMessages.map((m, i) => (
-                  <div key={i} className="mb-2">
-                    <ChatBubble from={m.role === "user" ? "user" : "ai"}>{m.content}</ChatBubble>
+                {chatMessages.map((message, index) => (
+                  <div key={index} className="mb-2">
+                    <ChatBubble from={message.role === "user" ? "user" : "ai"}>{message.content}</ChatBubble>
                   </div>
                 ))}
               </div>
 
-              {/* timeline */}
-              <WeeklyTimeline plan={plan} onAskWeek={askAboutWeek}
-               defaultSessionsPerWeek={sessionsPerWeekNum}  // 👈 thêm prop này 
-               />
-
-              {/* checklist */}
+              <WeeklyTimeline plan={plan} onAskWeek={askAboutWeek} defaultSessionsPerWeek={sessionsPerWeekNum} />
               <SafetyChecklist safety={plan?.safety} />
-
-              {/* goal notes */}
               <GoalNotes planGoalNotes={plan?.goalNotes} goalKey={formData?.goal} />
-
-              {/* chat panel chính */}
-              <ChatPanel
-                messages={chatMessages}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoadingAI}
-                formData={formData}
-              />
+              <ChatPanel messages={chatMessages} onSendMessage={handleSendMessage} isLoading={isLoadingAI} />
             </div>
           )}
         </div>

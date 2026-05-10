@@ -3,15 +3,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => void }) {
-  const [formData, setFormData] = useState({
+export type RoadmapFormValue = {
+  age: string;
+  height: string;
+  weight: string;
+  level: "beginner" | "intermediate" | "advanced";
+  goal: "suc-khoe" | "cuu-ho" | "the-thao";
+  frequency: "2" | "3" | "4";
+  healthHistory: string[];
+};
+
+export default function RoadmapForm({ onSubmit }: { onSubmit: (data: RoadmapFormValue) => void }) {
+  const [formData, setFormData] = useState<RoadmapFormValue>({
     age: "",
     height: "",
     weight: "",
     level: "beginner",
-    goal: "suc-khoe" as "suc-khoe" | "cuu-ho" | "the-thao",
+    goal: "suc-khoe",
     frequency: "2",
-    healthHistory: [] as string[],
+    healthHistory: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -24,19 +34,19 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
   ];
 
   const validateForm = () => {
-    const e: Record<string, string> = {};
-    if (!formData.age || +formData.age < 6 || +formData.age > 100) e.age = "Tuổi không hợp lệ (≥6).";
-    if (!formData.height || +formData.height < 100) e.height = "Chiều cao không hợp lệ (≥100cm).";
-    if (!formData.weight || +formData.weight < 20) e.weight = "Cân nặng không hợp lệ (≥20kg).";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    const nextErrors: Record<string, string> = {};
+    if (!formData.age || Number(formData.age) < 6 || Number(formData.age) > 100) nextErrors.age = "Tuổi không hợp lệ, tối thiểu là 6.";
+    if (!formData.height || Number(formData.height) < 100) nextErrors.height = "Chiều cao tối thiểu là 100cm.";
+    if (!formData.weight || Number(formData.weight) < 20) nextErrors.weight = "Cân nặng tối thiểu là 20kg.";
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const toggleHealth = (id: string) => {
     setFormData((prev) => ({
       ...prev,
       healthHistory: prev.healthHistory.includes(id)
-        ? prev.healthHistory.filter((h) => h !== id)
+        ? prev.healthHistory.filter((item) => item !== id)
         : [...prev.healthHistory, id],
     }));
   };
@@ -49,7 +59,6 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
   return (
     <div className="max-w-2xl mx-auto rounded-2xl p-8 border bg-card">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 3 ô: tuổi / cao / nặng */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2 text-card-foreground">Tuổi</label>
@@ -87,13 +96,12 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
           </div>
         </div>
 
-        {/* 3 ô: level / goal / freq */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2 text-card-foreground">Trình độ</label>
             <select
               value={formData.level}
-              onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, level: e.target.value as RoadmapFormValue["level"] })}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
             >
               <option value="beginner">Mới bắt đầu</option>
@@ -105,7 +113,7 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
             <label className="block text-sm font-medium mb-2 text-card-foreground">Mục tiêu</label>
             <select
               value={formData.goal}
-              onChange={(e) => setFormData({ ...formData, goal: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, goal: e.target.value as RoadmapFormValue["goal"] })}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
             >
               <option value="suc-khoe">Sức khỏe</option>
@@ -117,7 +125,7 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
             <label className="block text-sm font-medium mb-2 text-card-foreground">Buổi/tuần</label>
             <select
               value={formData.frequency}
-              onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, frequency: e.target.value as RoadmapFormValue["frequency"] })}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
             >
               <option value="2">2 buổi/tuần</option>
@@ -127,22 +135,19 @@ export default function RoadmapForm({ onSubmit }: { onSubmit: (data: any) => voi
           </div>
         </div>
 
-        {/* health */}
         <div>
-          <label className="block text-sm font-medium mb-3 text-card-foreground">
-            Tiền sử sức khỏe (nếu có)
-          </label>
+          <label className="block text-sm font-medium mb-3 text-card-foreground">Tiền sử sức khỏe nếu có</label>
           <div className="space-y-2">
-            {healthOptions.map((o) => (
-              <label key={o.id} className="flex items-center gap-2 cursor-pointer">
+            {healthOptions.map((option) => (
+              <label key={option.id} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.healthHistory.includes(o.id)}
-                  onChange={() => toggleHealth(o.id)}
+                  checked={formData.healthHistory.includes(option.id)}
+                  onChange={() => toggleHealth(option.id)}
                   className="w-4 h-4 rounded"
                   style={{ accentColor: "var(--primary)" }}
                 />
-                <span className="text-muted-foreground">{o.label}</span>
+                <span className="text-muted-foreground">{option.label}</span>
               </label>
             ))}
           </div>

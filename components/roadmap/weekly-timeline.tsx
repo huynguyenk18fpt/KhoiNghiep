@@ -2,85 +2,92 @@
 
 import { useState } from "react";
 
+type WeeklyPlanItem = {
+  week: number;
+  sessionsPerWeek?: number;
+  pool?: { name: string; durationMin?: number; drills?: string[] }[];
+  dry?: string[];
+  checkpoints?: string[];
+  notesForConditions?: string[];
+};
+
 export default function WeeklyTimeline({
   plan,
   onAskWeek,
-  defaultSessionsPerWeek = 3, // 👈 nhận số buổi/tuần từ form
+  defaultSessionsPerWeek = 3,
 }: {
-  plan?: { weeklyPlan?: any[] } | null;
+  plan?: { weeklyPlan?: WeeklyPlanItem[] } | null;
   onAskWeek?: (week: number) => void;
   defaultSessionsPerWeek?: number;
 }) {
-  // Nếu AI có weeklyPlan thì dùng, nhưng đảm bảo mỗi tuần có sessionsPerWeek;
-  // nếu thiếu -> gán bằng defaultSessionsPerWeek từ form
-  const weekly = (plan?.weeklyPlan && Array.isArray(plan.weeklyPlan) && plan.weeklyPlan.length
+  const fallbackWeekly: WeeklyPlanItem[] = Array.from({ length: 8 }).map((_, index) => ({
+    week: index + 1,
+    pool: [
+      { name: "Làm quen nước và thở", durationMin: 25, drills: ["thở ra dưới nước 3 x 10", "trượt nước 6-8 lần"] },
+      { name: "Nổi sấp/ngửa", durationMin: 20, drills: ["nổi sao biển 3 x 20 giây", "đổi tư thế sấp-ngửa"] },
+    ],
+    dry: ["xoay khớp toàn thân 5 phút", "core nhẹ 3 x 20 giây"],
+    checkpoints: ["giữ nổi 20-30 giây", "thổi bong bóng dưới nước"],
+    notesForConditions: [],
+  }));
+
+  const weekly = (plan?.weeklyPlan?.length
     ? plan.weeklyPlan
-    : Array.from({ length: 8 }).map((_, i) => ({
-        week: i + 1,
-        pool: [
-          { name: "Làm quen nước & thở", durationMin: 25, drills: ["thở ra dưới nước 3×10", "trượt nước 6–8 lần"] },
-          { name: "Nổi sấp/ngửa",        durationMin: 20, drills: ["nổi sao biển 3×20s", "đổi tư thế sấp-ngửa"] },
-        ],
-        dry: ["xoay khớp toàn thân 5’", "core nhẹ 3×20s"],
-        checkpoints: ["giữ nổi 20–30s", "thổi bong bóng dưới nước"],
-        notesForConditions: [],
-      }))
-  ).map((w: any) => ({
-    ...w,
+    : fallbackWeekly
+  ).map((week) => ({
+    ...week,
     sessionsPerWeek:
-      typeof w.sessionsPerWeek === "number" && w.sessionsPerWeek > 0
-        ? w.sessionsPerWeek
-        : defaultSessionsPerWeek, // 👈 ép về số buổi/tuần chọn ở form
+      typeof week.sessionsPerWeek === "number" && week.sessionsPerWeek > 0 ? week.sessionsPerWeek : defaultSessionsPerWeek,
   }));
 
   const [expanded, setExpanded] = useState<number[]>([1]);
-  const toggleWeek = (w: number) =>
-    setExpanded((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]));
+  const toggleWeek = (week: number) => {
+    setExpanded((prev) => (prev.includes(week) ? prev.filter((item) => item !== week) : [...prev, week]));
+  };
 
   return (
     <div className="space-y-4">
-      <h3 className="text-2xl font-bold mb-6 text-card-foreground">Lộ trình 8 Tuần</h3>
+      <h3 className="text-2xl font-bold mb-6 text-card-foreground">Lộ trình 8 tuần</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {weekly.map((w: any) => {
-          const minutes = Array.isArray(w.pool)
-            ? w.pool.reduce((sum: number, p: any) => sum + (p?.durationMin || 0), 0)
+        {weekly.map((week) => {
+          const minutes = Array.isArray(week.pool)
+            ? week.pool.reduce((sum, part) => sum + (part.durationMin || 0), 0)
             : 0;
 
           return (
-            <div key={w.week} className="rounded-xl overflow-hidden border bg-card">
-              {/* Header */}
+            <div key={week.week} className="rounded-xl overflow-hidden border bg-card">
               <button
-                onClick={() => toggleWeek(w.week)}
+                onClick={() => toggleWeek(week.week)}
                 className="w-full p-4 text-left hover:opacity-80 transition border-b bg-muted/40"
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <h4 className="font-bold text-lg text-card-foreground">Tuần {w.week}</h4>
+                    <h4 className="font-bold text-lg text-card-foreground">Tuần {week.week}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {w.sessionsPerWeek} buổi/tuần • ~{Math.ceil(minutes / 60)}h/tuần
+                      {week.sessionsPerWeek} buổi/tuần - khoảng {Math.ceil(minutes / 60)} giờ/tuần
                     </p>
                   </div>
-                  <span className="text-primary text-xl">{expanded.includes(w.week) ? "−" : "+"}</span>
+                  <span className="text-primary text-xl">{expanded.includes(week.week) ? "-" : "+"}</span>
                 </div>
               </button>
 
-              {/* Content */}
-              {expanded.includes(w.week) && (
+              {expanded.includes(week.week) && (
                 <div className="p-4 space-y-4">
-                  {/* In-water */}
-                  {Array.isArray(w.pool) && (
+                  {Array.isArray(week.pool) && (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">💧 Bài tập trong nước</h5>
+                      <h5 className="font-semibold mb-2 text-card-foreground">Bài tập trong nước</h5>
                       <div className="space-y-2">
-                        {w.pool.map((p: any, idx: number) => (
-                          <div key={idx} className="p-3 rounded-lg bg-sky-50 border-l-4" style={{ borderColor: "var(--primary)" }}>
+                        {week.pool.map((part, index) => (
+                          <div key={index} className="p-3 rounded-lg bg-sky-50 border-l-4" style={{ borderColor: "var(--primary)" }}>
                             <p className="font-medium text-card-foreground">
-                              {p.name} {p.durationMin ? `• ${p.durationMin}’` : ""}
+                              {part.name} {part.durationMin ? `- ${part.durationMin} phút` : ""}
                             </p>
-                            {Array.isArray(p.drills) && p.drills.length > 0 && (
+                            {Array.isArray(part.drills) && part.drills.length > 0 && (
                               <ul className="mt-1 ml-4 text-sm text-muted-foreground list-disc">
-                                {p.drills.map((d: string, i: number) => <li key={i}>{d}</li>)}
+                                {part.drills.map((drill, drillIndex) => (
+                                  <li key={drillIndex}>{drill}</li>
+                                ))}
                               </ul>
                             )}
                           </div>
@@ -89,45 +96,40 @@ export default function WeeklyTimeline({
                     </div>
                   )}
 
-                  {/* Dry */}
-                  {Array.isArray(w.dry) && w.dry.length > 0 && (
+                  {Array.isArray(week.dry) && week.dry.length > 0 && (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">🏃 Bài tập khô</h5>
+                      <h5 className="font-semibold mb-2 text-card-foreground">Bài tập khô</h5>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc ml-4">
-                        {w.dry.map((d: string, i: number) => <li key={i}>{d}</li>)}
+                        {week.dry.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
                       </ul>
                     </div>
                   )}
 
-                  {/* Checkpoints */}
-                  {Array.isArray(w.checkpoints) && w.checkpoints.length > 0 && (
+                  {Array.isArray(week.checkpoints) && week.checkpoints.length > 0 && (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">✓ Tiêu chí hoàn thành</h5>
+                      <h5 className="font-semibold mb-2 text-card-foreground">Tiêu chí hoàn thành</h5>
                       <div className="space-y-1">
-                        {w.checkpoints.map((c: string, i: number) => (
-                          <label key={i} className="flex items-center gap-2 cursor-pointer">
+                        {week.checkpoints.map((checkpoint, index) => (
+                          <label key={index} className="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "var(--secondary)" }} />
-                            <span className="text-sm text-muted-foreground">{c}</span>
+                            <span className="text-sm text-muted-foreground">{checkpoint}</span>
                           </label>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Health notes */}
-                  {Array.isArray(w.notesForConditions) && w.notesForConditions.length > 0 && (
+                  {Array.isArray(week.notesForConditions) && week.notesForConditions.length > 0 && (
                     <div className="p-3 rounded-lg bg-amber-50 border-l-4 border-amber-400">
                       <p className="text-sm text-amber-900">
-                        <strong>⚠️ Lưu ý:</strong> {w.notesForConditions.join(" ")}
+                        <strong>Lưu ý:</strong> {week.notesForConditions.join(" ")}
                       </p>
                     </div>
                   )}
 
-                  {/* Ask assistant */}
-                  <button
-                    onClick={() => onAskWeek?.(w.week)}
-                    className="w-full py-2 text-sm rounded-lg border text-primary bg-sky-50"
-                  >
+                  <button onClick={() => onAskWeek?.(week.week)} className="w-full py-2 text-sm rounded-lg border text-primary bg-sky-50">
                     Hỏi trợ lý về tuần này
                   </button>
                 </div>

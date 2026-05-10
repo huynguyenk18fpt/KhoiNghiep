@@ -1,10 +1,10 @@
-// lib/ai/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export function getModelPriority(): string[] {
-  const envList = process.env.GEMINI_MODELS?.split(",").map((s) => s.trim()).filter(Boolean);
+  const envList = process.env.GEMINI_MODELS?.split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
   if (envList?.length) return envList;
-  // mặc định thử lần lượt
   return ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
 }
 
@@ -23,7 +23,21 @@ const DEFAULT_RETRY: Required<RetryOpts> = {
 };
 
 function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorStatus(err: unknown) {
+  if (typeof err !== "object" || err === null) return undefined;
+  const normalized = err as { status?: number; response?: { status?: number } };
+  return normalized.status ?? normalized.response?.status;
+}
+
+function getErrorMessage(err: unknown) {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object" && err !== null && "message" in err) {
+    return String((err as { message?: unknown }).message);
+  }
+  return "";
 }
 
 export async function callGeminiWithRetry(
@@ -35,33 +49,25 @@ export async function callGeminiWithRetry(
   const models = getModelPriority();
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  let lastErr: any = null;
+  let lastErr: unknown = null;
 
-  for (let m = 0; m < models.length; m++) {
-    const modelId = models[m];
+  for (const modelId of models) {
     const model = genAI.getGenerativeModel({ model: modelId });
-
     let delay = opts.initialDelayMs;
 
     for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
       try {
         const result = await model.generateContent(prompt);
-        const raw =
-          typeof result?.response?.text === "function"
-            ? result.response.text()
-            : result?.response?.text;
+        const raw = typeof result.response.text === "function" ? result.response.text() : result.response.text;
         const text = String(raw || "").trim();
         if (!text) throw new Error("Empty response from Gemini");
         return text;
-      } catch (err: any) {
+      } catch (err) {
         lastErr = err;
-        const status = err?.status ?? err?.response?.status;
+        const status = getErrorStatus(err);
         const isTransient = status === 429 || status === 503 || status === 500;
         const isLastAttempt = attempt === opts.maxRetries;
-        if (!isTransient || isLastAttempt) {
-          // bỏ model này, thử model tiếp theo
-          break;
-        }
+        if (!isTransient || isLastAttempt) break;
 
         const jitter = Math.floor(Math.random() * 200);
         const wait = Math.min(delay + jitter, opts.maxDelayMs);
@@ -72,22 +78,20 @@ export async function callGeminiWithRetry(
   }
 
   const msg =
-    lastErr?.message ||
-    `[Gemini Error] Không thể tạo nội dung sau khi thử nhiều model (${getModelPriority().join(
-      " → ",
-    )})`;
-  const status = lastErr?.status ?? lastErr?.response?.status ?? "unknown";
+    getErrorMessage(lastErr) ||
+    `[Gemini Error] Không thể tạo nội dung sau khi thử nhiều model (${getModelPriority().join(" -> ")})`;
+  const status = getErrorStatus(lastErr) ?? "unknown";
   throw new Error(`${msg} (status: ${status})`);
 }
 
-export function extractJson(text: string): any {
+export function extractJson(text: string): unknown {
   const jsonStr = text
     .replace(/^```json/gi, "")
     .replace(/^```/gi, "")
     .replace(/```$/gi, "")
     .trim();
   try {
-    return JSON.parse(jsonStr);
+    return JSON.parse(jsonStr) as unknown;
   } catch {
     return null;
   }
