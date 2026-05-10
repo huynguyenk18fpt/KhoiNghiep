@@ -1,7 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, LocateFixed, MapPin, Navigation } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,207 +13,312 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useRef, useEffect } from "react";
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api";
-import { pools } from "@/lib/data/pools"; // ✅ Import pools từ file riêng
+import { pools, type Pool } from "@/lib/data/pools";
 
-// Style cho map container
-const mapContainerStyle = {
-  width: "100%",
-  height: "400px",
+const PoolsMap = dynamic(() => import("@/components/pools/pools-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-[360px] items-center justify-center bg-slate-50 text-sm text-slate-500">
+      Đang tải bản đồ...
+    </div>
+  ),
+});
+
+type UserLocation = {
+  lat: number;
+  lng: number;
 };
 
-// Vị trí mặc định
-const defaultCenter = { lat: 10.0309, lng: 105.7689 };
+type PoolWithDistance = Pool & {
+  distanceKm: number | null;
+};
+
+const RESULTS_PER_PAGE = 5;
+const fallbackPool = pools[0];
+
+function getDistanceKm(from: UserLocation, to: Pick<Pool, "lat" | "lng">) {
+  const earthRadiusKm = 6371;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(to.lat - from.lat);
+  const dLng = toRadians(to.lng - from.lng);
+  const lat1 = toRadians(from.lat);
+  const lat2 = toRadians(to.lat);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+function formatDistance(distanceKm: number | null) {
+  if (distanceKm === null) return null;
+  if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`;
+  return `${distanceKm.toFixed(1)} km`;
+}
 
 export default function PoolsPage() {
-  const [selectedPool, setSelectedPool] = useState(pools[0]);
-  const [activeMarker, setActiveMarker] = useState<number | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState("all"); // Lọc theo quận huyện
-  const [page, setPage] = useState(1); // Phân trang
-  const mapRef = useRef<google.maps.Map | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState("all");
+  const [selectedPool, setSelectedPool] = useState<Pool>(fallbackPool);
+  const [page, setPage] = useState(1);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
 
-  const resultsPerPage = 5;
-
-  // ✅ Kiểm tra biến môi trường
-  const showMapEnv = process.env.NEXT_PUBLIC_ENABLE_MAP === "true";
-
-  // ✅ Cho phép bật map trong dev qua query param ?showMap=1
-  const [devShowMap, setDevShowMap] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      setDevShowMap(params.get("showMap") === "1");
-    }
-  }, []);
-
-  const showMap = showMapEnv || devShowMap;
-
-  // ✅ Google Maps loader
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  });
-
-  const handleActiveMarker = (markerId: number) => {
-    if (markerId === activeMarker) return;
-    setActiveMarker(markerId);
-  };
-
-  // Filter hồ bơi theo quận huyện
-  const filteredPools = pools.filter(pool => 
-    selectedDistrict === "all" || pool.district === selectedDistrict
+  const districtOptions = useMemo(
+    () => Array.from(new Set(pools.map((pool) => pool.district))).sort((a, b) => a.localeCompare(b, "vi")),
+    [],
   );
 
-  // Paginate kết quả
-  const paginatedPools = filteredPools.slice((page - 1) * resultsPerPage, page * resultsPerPage);
+  const poolsWithDistance = useMemo<PoolWithDistance[]>(
+    () =>
+      pools.map((pool) => ({
+        ...pool,
+        distanceKm: userLocation ? getDistanceKm(userLocation, pool) : null,
+      })),
+    [userLocation],
+  );
+
+  const filteredPools = useMemo(() => {
+    const districtPools =
+      selectedDistrict === "all"
+        ? poolsWithDistance
+        : poolsWithDistance.filter((pool) => pool.district === selectedDistrict);
+
+    if (!userLocation) return districtPools;
+
+    return [...districtPools].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+  }, [poolsWithDistance, selectedDistrict, userLocation]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPools.length / RESULTS_PER_PAGE));
+  const paginatedPools = filteredPools.slice((page - 1) * RESULTS_PER_PAGE, page * RESULTS_PER_PAGE);
+  const selectedDistance = formatDistance(
+    filteredPools.find((pool) => pool.id === selectedPool.id)?.distanceKm ?? null,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDistrict, userLocation]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    const nextPool = filteredPools.find((pool) => pool.id === selectedPool.id) ?? filteredPools[0] ?? fallbackPool;
+    if (nextPool.id !== selectedPool.id) {
+      setSelectedPool(nextPool);
+    }
+  }, [filteredPools, selectedPool.id]);
+
+  const handleSelectPool = (pool: Pool) => {
+    setSelectedPool(pool);
+  };
+
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage("Trình duyệt hiện tại không hỗ trợ lấy vị trí.");
+      return;
+    }
+
+    setLocating(true);
+    setLocationMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationMessage("Đã sắp xếp hồ bơi theo khoảng cách gần bạn.");
+        setLocating(false);
+      },
+      () => {
+        setLocationMessage("Không lấy được vị trí. Danh sách đang giữ thứ tự mặc định.");
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 10000,
+      },
+    );
+  };
+
+  const handleClearLocation = () => {
+    setUserLocation(null);
+    setLocationMessage(null);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Header />
-      <main className="pt-8 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left */}
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                Những hồ bơi quanh đây
-              </h1>
-              <div className="mb-8">
-                <Select
-                  defaultValue="all"
-                  onValueChange={(value) => setSelectedDistrict(value)}
-                >
-                  <SelectTrigger className="w-full p-4 text-lg">
-                    <SelectValue placeholder="Chọn quận huyện" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="Ninh Kiều">Ninh Kiều</SelectItem>
-                    <SelectItem value="Bình Thủy">Bình Thủy</SelectItem>
-                    <SelectItem value="Cái Răng">Cái Răng</SelectItem>
-                    <SelectItem value="Ô Môn">Ô Môn</SelectItem>
-                    <SelectItem value="Thốt Nốt">Thốt Nốt</SelectItem>
-                    <SelectItem value="Vĩnh Thạnh">Vĩnh Thạnh</SelectItem>
-                    <SelectItem value="Cờ Đỏ">Cờ Đỏ</SelectItem>
-                    <SelectItem value="Thới Lai">Thới Lai</SelectItem>
-                    <SelectItem value="Phong Điền">Phong Điền</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      <main className="pb-16 pt-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <p className="text-sm font-medium text-blue-600">Floaty Maps</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">Hồ bơi quanh Cần Thơ</h1>
+            <p className="mt-3 max-w-2xl text-slate-600">
+              Tìm hồ bơi phù hợp để luyện tập an toàn, xem vị trí trên bản đồ và mở chỉ đường nhanh.
+            </p>
+          </div>
 
-              <div className="space-y-4">
-                {paginatedPools.map((pool, index) => (
-                  <div
-                    key={pool.id}
-                    onClick={() => {
-                      setSelectedPool(pool);
-                      if (mapRef.current) {
-                        mapRef.current.panTo({
-                          lat: pool.lat,
-                          lng: pool.lng,
-                        });
-                      }
-                    }}
-                    className={`cursor-pointer bg-white p-4 rounded-lg shadow-sm border ${
-                      selectedPool.id === pool.id
-                        ? "border-blue-500 ring-1 ring-blue-200"
-                        : "border-gray-200"
-                    } hover:shadow-md transition`}
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {index + 1}. {pool.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">{pool.address}</p>
-                    <a
-                      href={pool.mapLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 text-sm mt-2 inline-block hover:underline"
-                    >
-                      📍 Chỉ đường
-                    </a>
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)]">
+            <section className="space-y-5">
+              <div className="rounded-lg border bg-white p-4 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div>
+                    <label htmlFor="district" className="mb-2 block text-sm font-medium text-slate-700">
+                      Quận, huyện
+                    </label>
+                    <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+                      <SelectTrigger id="district" className="h-11 w-full">
+                        <SelectValue placeholder="Chọn khu vực" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả khu vực</SelectItem>
+                        {districtOptions.map((district) => (
+                          <SelectItem key={district} value={district}>
+                            {district}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 gap-2"
+                      onClick={handleUseLocation}
+                      disabled={locating}
+                    >
+                      <LocateFixed className="h-4 w-4" />
+                      {locating ? "Đang lấy vị trí" : "Dùng vị trí của tôi"}
+                    </Button>
+                    {userLocation ? (
+                      <Button type="button" variant="ghost" className="h-11" onClick={handleClearLocation}>
+                        Bỏ sắp xếp
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                  <span>{filteredPools.length} hồ bơi</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span>
+                    Trang {page}/{totalPages}
+                  </span>
+                  {locationMessage ? <span className="text-blue-700">{locationMessage}</span> : null}
+                </div>
               </div>
 
-              {/* Phân trang */}
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={() => setPage(page > 1 ? page - 1 : 1)}
-                  className="px-4 py-2 bg-gray-200 rounded-md"
+              <div className="space-y-3">
+                {paginatedPools.map((pool, index) => {
+                  const displayIndex = (page - 1) * RESULTS_PER_PAGE + index + 1;
+                  const distance = formatDistance(pool.distanceKm);
+                  const isSelected = selectedPool.id === pool.id;
+
+                  return (
+                    <article
+                      key={pool.id}
+                      className={`rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md ${
+                        isSelected ? "border-blue-500 ring-2 ring-blue-100" : "border-slate-200"
+                      }`}
+                    >
+                      <button type="button" className="block w-full text-left" onClick={() => handleSelectPool(pool)}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-slate-400">#{displayIndex}</p>
+                            <h2 className="mt-1 text-lg font-semibold text-slate-950">{pool.name}</h2>
+                          </div>
+                          {distance ? (
+                            <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                              {distance}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 flex gap-2 text-sm leading-6 text-slate-600">
+                          <MapPin className="mt-1 h-4 w-4 shrink-0 text-blue-600" />
+                          <span>{pool.address}</span>
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">{pool.district}</p>
+                      </button>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          className={isSelected ? "gap-2 bg-blue-600 hover:bg-blue-700" : "gap-2"}
+                          onClick={() => handleSelectPool(pool)}
+                        >
+                          <MapPin className="h-4 w-4" />
+                          Xem trên bản đồ
+                        </Button>
+                        <Button asChild type="button" size="sm" variant="outline" className="gap-2">
+                          <a href={pool.mapLink} target="_blank" rel="noopener noreferrer">
+                            <Navigation className="h-4 w-4" />
+                            Chỉ đường
+                          </a>
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border bg-white p-3 shadow-sm">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  disabled={page === 1}
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Trước
-                </button>
-                <span className="px-4 py-2">{page}</span>
-                <button
-                  onClick={() => setPage(page < Math.ceil(filteredPools.length / resultsPerPage) ? page + 1 : page)}
-                  className="px-4 py-2 bg-gray-200 rounded-md"
+                </Button>
+                <span className="text-sm font-medium text-slate-600">
+                  {page} / {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                  disabled={page === totalPages}
                 >
                   Sau
-                </button>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-            </div>
+            </section>
 
-            {/* Right - Google Map */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              {showMap ? (
-                isLoaded ? (
-                  <GoogleMap
-                    mapContainerStyle={{
-                      width: "100%",
-                      height: "800px", // Chỉ hiển thị nửa trên
-                    }}
-                    center={selectedPool ? { lat: selectedPool.lat, lng: selectedPool.lng } : defaultCenter}
-                    zoom={14}
-                    onLoad={(map) => {
-                      mapRef.current = map;
-                    }}
-                    onUnmount={() => {
-                      mapRef.current = null;
-                    }}
-                  >
-                    {filteredPools.map((pool) => (
-                      <Marker
-                        key={pool.id}
-                        position={{ lat: pool.lat, lng: pool.lng }}
-                        onClick={() => handleActiveMarker(pool.id)}
-                      >
-                        {activeMarker === pool.id ? (
-                          <InfoWindow onCloseClick={() => setActiveMarker(null)}>
-                            <div>
-                              <strong>{pool.name}</strong>
-                              <br />
-                              {pool.address}
-                              <br />
-                              <a
-                                href={pool.mapLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline"
-                              >
-                                Đi tới đây
-                              </a>
-                            </div>
-                          </InfoWindow>
-                        ) : null}
-                      </Marker>
-                    ))}
-                  </GoogleMap>
-                ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <p>Đang load bản đồ...</p>
-                  </div>
-                )
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center bg-gray-100">
-                  <p className="text-gray-500 mb-2">Bản đồ đã bị tắt</p>
-                  <p className="text-xs text-gray-400">
-                    Thêm <code>?showMap=1</code> vào URL để bật tạm
+            <aside className="lg:sticky lg:top-6 lg:self-start">
+              <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+                <div className="border-b px-4 py-3">
+                  <p className="text-sm font-medium text-slate-500">Đang chọn</p>
+                  <h2 className="text-lg font-semibold text-slate-950">{selectedPool.name}</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {selectedPool.address}
+                    {selectedDistance ? ` · ${selectedDistance}` : ""}
                   </p>
                 </div>
-              )}
-            </div>
+                <div className="h-[360px] sm:h-[460px] lg:h-[680px]">
+                  <PoolsMap
+                    pools={filteredPools}
+                    selectedPool={selectedPool}
+                    userLocation={userLocation}
+                    onSelectPool={handleSelectPool}
+                  />
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </main>

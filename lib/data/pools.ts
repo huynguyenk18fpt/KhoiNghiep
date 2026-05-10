@@ -1,18 +1,14 @@
-// data/pools.ts
-
 export interface Pool {
   id: number;
   name: string;
   address: string;
   district: string;
-  lat: number | 0;
-  lng: number | 0;
+  lat: number;
+  lng: number;
   mapLink: string;
 }
 
 export const pools: Pool[] = [
-
-  // Ninh Kiều
   {
     id: 1,
     name: "Hồ bơi Hùng Quân",
@@ -34,7 +30,7 @@ export const pools: Pool[] = [
   {
     id: 3,
     name: "Hồ bơi Khách sạn Mường Thanh",
-    address: "2QRR+V86 Tp, Vòng Xoay Công Viên Nước, Lê Lợi, Cái Khế",
+    address: "2QRR+V86, Vòng xoay Công viên nước, Lê Lợi, Cái Khế",
     district: "Ninh Kiều",
     lat: 10.042136,
     lng: 105.789789,
@@ -67,13 +63,10 @@ export const pools: Pool[] = [
     lng: 105.7930694736726,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=10.039920111409653,105.7930694736726",
   },
-  
-
-  // Bình Thủy
   {
     id: 7,
-    name: "Hồ bơi Ánh Viên Cần Thơ (CLB Bơi Lội Quân Khu 9)",
-    address: "9 Đ. Nguyễn Đệ, An Hoà",
+    name: "Hồ bơi Ánh Viên Cần Thơ",
+    address: "9 Đ. Nguyễn Đệ, An Hòa",
     district: "Bình Thủy",
     lat: 10.052066041450997,
     lng: 105.77000293253579,
@@ -82,19 +75,16 @@ export const pools: Pool[] = [
   {
     id: 8,
     name: "Hồ bơi Rạch Súc",
-    address: "02 QL91B, kv Bình Phó A",
+    address: "02 QL91B, KV Bình Phó A",
     district: "Bình Thủy",
     lat: 10.040194764465976,
     lng: 105.74054406448882,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=10.040194764465976,105.74054406448882",
   },
-
-
-  // Cái Răng
- {
+  {
     id: 9,
-    name: "Hồ Bơi Minh Phương",
-    address: "32P Đ. Trương Vĩnh Nguyên, ấp Mỹ",
+    name: "Hồ bơi Minh Phương",
+    address: "32P Đ. Trương Vĩnh Nguyên, Ấp Mỹ",
     district: "Cái Răng",
     lat: 9.993885312637362,
     lng: 105.75821797254893,
@@ -103,7 +93,7 @@ export const pools: Pool[] = [
   {
     id: 10,
     name: "Hồ bơi Nam Long",
-    address: "2Q5P+69J, Hưng Khu dân cư Nam",
+    address: "Khu dân cư Nam Long, Cái Răng",
     district: "Cái Răng",
     lat: 10.008099663415964,
     lng: 105.78589417731433,
@@ -111,7 +101,7 @@ export const pools: Pool[] = [
   },
   {
     id: 11,
-    name: "CAFE HỒ BƠI ĐẠI PHÚ SKY",
+    name: "Cafe Hồ Bơi Đại Phú Sky",
     address: "2Q4Q+6G4, Đ. Số 3, Khu dân cư Vạn Phong",
     district: "Cái Răng",
     lat: 10.005229307088575,
@@ -120,16 +110,13 @@ export const pools: Pool[] = [
   },
   {
     id: 12,
-    name: "Hồ Bơi Mai Lan",
-    address: "418B Đường Huỳnh Thị Nỡ, KV Thành Phú",
+    name: "Hồ bơi Mai Lan",
+    address: "418B Đường Huỳnh Thị Nở, KV Thành Phú",
     district: "Cái Răng",
     lat: 9.970867187635204,
     lng: 105.75211771777222,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=9.970867187635204,105.75211771777222",
   },
-
-
-  // Ô Môn
   {
     id: 13,
     name: "Cẩm Tú Hồ Bơi",
@@ -139,8 +126,6 @@ export const pools: Pool[] = [
     lng: 105.6239140274386,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=10.109496236308685,105.6239140274386",
   },
-
-  // Vĩnh Thạnh
   {
     id: 14,
     name: "Hồ bơi Thạnh An",
@@ -150,8 +135,6 @@ export const pools: Pool[] = [
     lng: 105.32180450852958,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=10.153888714047868,105.32180450852958",
   },
-
-  // Thốt Nốt
   {
     id: 15,
     name: "Sens Club",
@@ -170,7 +153,4 @@ export const pools: Pool[] = [
     lng: 105.52721511565845,
     mapLink: "https://www.google.com/maps/dir/?api=1&destination=10.27357373629448,105.52721511565845",
   },
-
-  
-  
 ];
