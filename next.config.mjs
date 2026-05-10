@@ -6,14 +6,17 @@ const bundleAnalyzer = withBundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  distDir: ".next-build",
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      { protocol: "https", hostname: "i1-vnexpress.vnecdn.net" },
+      { protocol: "https", hostname: "file3.qdnd.vn" },
+      { protocol: "https", hostname: "cdn.nhandan.vn" },
+      { protocol: "https", hostname: "cdn2.tuoitre.vn" },
+      { protocol: "https", hostname: "baogiaothong.mediacdn.vn" },
+      { protocol: "https", hostname: "suckhoedoisong.qltns.mediacdn.vn" },
+      { protocol: "https", hostname: "images2.thanhnien.vn" },
+    ],
   },
 };
 
