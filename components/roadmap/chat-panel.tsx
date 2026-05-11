@@ -29,23 +29,25 @@ export default function ChatPanel({
   ];
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
     onSendMessage(input.trim());
     setInput("");
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden border bg-card flex flex-col h-[600px]">
-      <div className="p-4 border-b bg-muted/40">
-        <h3 className="font-bold text-card-foreground">Trợ lý AI</h3>
-        <p className="text-xs text-muted-foreground mt-1">Hỏi thêm về lộ trình, cường độ và lưu ý an toàn.</p>
+    <section className="flex h-[600px] flex-col overflow-hidden rounded-2xl border bg-card" aria-labelledby="chat-title">
+      <div className="border-b bg-muted/40 p-4">
+        <h3 id="chat-title" className="font-bold text-card-foreground">
+          Trợ lý AI
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">Hỏi thêm về lộ trình, cường độ và lưu ý an toàn.</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-busy={isLoading}>
         {messages.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
+              className={`max-w-xs rounded-lg px-4 py-2 shadow-sm lg:max-w-md ${
                 msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
               }`}
             >
@@ -54,49 +56,60 @@ export default function ChatPanel({
           </div>
         ))}
 
-        {isLoading && (
+        {isLoading ? (
           <div className="flex justify-start">
-            <div className="px-4 py-3 rounded-lg bg-muted">
+            <div className="rounded-lg bg-muted px-4 py-3" role="status" aria-label="Trợ lý đang trả lời">
               <div className="flex space-x-2">
-                <div className="w-2 h-2 rounded-full animate-bounce bg-primary" />
-                <div className="w-2 h-2 rounded-full animate-bounce bg-primary" style={{ animationDelay: "0.1s" }} />
-                <div className="w-2 h-2 rounded-full animate-bounce bg-primary" style={{ animationDelay: "0.2s" }} />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0.1s" }} />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0.2s" }} />
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         <div ref={endRef} />
       </div>
 
-      {messages.length <= 2 && (
-        <div className="px-4 py-3 border-t space-y-2">
+      {messages.length <= 2 ? (
+        <div className="space-y-2 border-t px-4 py-3">
           <p className="text-xs text-muted-foreground">Gợi ý nhanh:</p>
           <div className="flex flex-wrap gap-2">
             {quickSuggestions.map((suggestion) => (
-              <button key={suggestion} onClick={() => onSendMessage(suggestion)} className="px-3 py-1 text-xs rounded-full border text-primary">
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => onSendMessage(suggestion)}
+                disabled={isLoading}
+                className="rounded-full border px-3 py-1 text-xs text-primary disabled:opacity-50"
+              >
                 {suggestion}
               </button>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
-      <div className="p-4 border-t">
+      <div className="border-t p-4">
         <div className="flex gap-2">
+          <label htmlFor="roadmap-chat-input" className="sr-only">
+            Nhập câu hỏi cho trợ lý AI
+          </label>
           <input
+            id="roadmap-chat-input"
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Nhập câu hỏi..."
-            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+            className="flex-1 rounded-lg border px-3 py-2 focus:outline-none focus:ring-2"
+            disabled={isLoading}
           />
-          <Button onClick={handleSend} disabled={isLoading}>
+          <Button type="button" onClick={handleSend} disabled={isLoading || !input.trim()}>
             Gửi
           </Button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -9,8 +9,11 @@ import "./globals.css"
 
 
 export const metadata: Metadata = {
-  title: "Downing Prevention",
-  description: "Web for Downing Prevention",
+  title: {
+    default: "Floaty",
+    template: "%s",
+  },
+  description: "Floaty hỗ trợ phòng chống đuối nước với kiến thức, lộ trình học bơi và trang bị bơi lội an toàn.",
   icons: {
     icon: "/images/fav.png",
   },

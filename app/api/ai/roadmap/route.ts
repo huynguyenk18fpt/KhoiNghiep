@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { callGeminiWithRetry, extractJson } from "@/lib/ai/gemini";
+import { checkRateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -52,6 +53,7 @@ function buildFallbackPlan(formData: RoadmapFormData, reason: string) {
   const age = Number.parseInt(formData.age, 10);
 
   return {
+    source: "fallback",
     message: `Mình đang dùng lộ trình mẫu vì ${reason}. Bạn vẫn có thể tham khảo kế hoạch 8 tuần an toàn này và điều chỉnh với huấn luyện viên trực tiếp khi cần.`,
     structured: {
       title: `Lộ trình học bơi an toàn cho học viên ${Number.isNaN(age) ? "" : `${age} tuổi`}`.trim(),
@@ -98,6 +100,11 @@ function buildFallbackPlan(formData: RoadmapFormData, reason: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(req, "ai-roadmap", { limit: 5, windowMs: 10 * 60 * 1000 });
+    if (rateLimit.limited) {
+      return rateLimitResponse(rateLimit.resetAt);
+    }
+
     const parsed = roadmapRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Dữ liệu lộ trình không hợp lệ." }, { status: 400 });
@@ -208,7 +215,7 @@ Chỉ trả về JSON hợp lệ, không kèm giải thích:
       return NextResponse.json(buildFallbackPlan(formData, "AI trả về dữ liệu chưa đúng định dạng"));
     }
 
-    return NextResponse.json(json);
+    return NextResponse.json({ ...json, source: "ai" });
   } catch (err) {
     console.error("AI roadmap error:", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Không thể tạo lộ trình AI." }, { status: 502 });

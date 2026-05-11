@@ -31,13 +31,12 @@ export default function WeeklyTimeline({
     notesForConditions: [],
   }));
 
-  const weekly = (plan?.weeklyPlan?.length
-    ? plan.weeklyPlan
-    : fallbackWeekly
-  ).map((week) => ({
+  const weekly = (plan?.weeklyPlan?.length ? plan.weeklyPlan : fallbackWeekly).map((week) => ({
     ...week,
     sessionsPerWeek:
-      typeof week.sessionsPerWeek === "number" && week.sessionsPerWeek > 0 ? week.sessionsPerWeek : defaultSessionsPerWeek,
+      typeof week.sessionsPerWeek === "number" && week.sessionsPerWeek > 0
+        ? week.sessionsPerWeek
+        : defaultSessionsPerWeek,
   }));
 
   const [expanded, setExpanded] = useState<number[]>([1]);
@@ -46,98 +45,119 @@ export default function WeeklyTimeline({
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-2xl font-bold mb-6 text-card-foreground">Lộ trình 8 tuần</h3>
+    <section className="space-y-4" aria-labelledby="weekly-timeline-title">
+      <h3 id="weekly-timeline-title" className="mb-6 text-2xl font-bold text-card-foreground">
+        Lộ trình 8 tuần
+      </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {weekly.map((week) => {
+          const isExpanded = expanded.includes(week.week);
           const minutes = Array.isArray(week.pool)
             ? week.pool.reduce((sum, part) => sum + (part.durationMin || 0), 0)
             : 0;
+          const panelId = `roadmap-week-${week.week}`;
 
           return (
-            <div key={week.week} className="rounded-xl overflow-hidden border bg-card">
+            <div key={week.week} className="overflow-hidden rounded-xl border bg-card">
               <button
+                type="button"
                 onClick={() => toggleWeek(week.week)}
-                className="w-full p-4 text-left hover:opacity-80 transition border-b bg-muted/40"
+                aria-expanded={isExpanded}
+                aria-controls={panelId}
+                className="w-full border-b bg-muted/40 p-4 text-left transition hover:opacity-80"
               >
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold text-lg text-card-foreground">Tuần {week.week}</h4>
+                    <h4 className="text-lg font-bold text-card-foreground">Tuần {week.week}</h4>
                     <p className="text-sm text-muted-foreground">
                       {week.sessionsPerWeek} buổi/tuần - khoảng {Math.ceil(minutes / 60)} giờ/tuần
                     </p>
                   </div>
-                  <span className="text-primary text-xl">{expanded.includes(week.week) ? "-" : "+"}</span>
+                  <span className="text-xl text-primary" aria-hidden="true">
+                    {isExpanded ? "-" : "+"}
+                  </span>
                 </div>
               </button>
 
-              {expanded.includes(week.week) && (
-                <div className="p-4 space-y-4">
-                  {Array.isArray(week.pool) && (
+              {isExpanded ? (
+                <div id={panelId} className="space-y-4 p-4">
+                  {Array.isArray(week.pool) ? (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">Bài tập trong nước</h5>
+                      <h5 className="mb-2 font-semibold text-card-foreground">Bài tập trong nước</h5>
                       <div className="space-y-2">
                         {week.pool.map((part, index) => (
-                          <div key={index} className="p-3 rounded-lg bg-sky-50 border-l-4" style={{ borderColor: "var(--primary)" }}>
+                          <div
+                            key={index}
+                            className="rounded-lg border-l-4 bg-sky-50 p-3"
+                            style={{ borderColor: "var(--primary)" }}
+                          >
                             <p className="font-medium text-card-foreground">
                               {part.name} {part.durationMin ? `- ${part.durationMin} phút` : ""}
                             </p>
-                            {Array.isArray(part.drills) && part.drills.length > 0 && (
-                              <ul className="mt-1 ml-4 text-sm text-muted-foreground list-disc">
+                            {Array.isArray(part.drills) && part.drills.length > 0 ? (
+                              <ul className="ml-4 mt-1 list-disc text-sm text-muted-foreground">
                                 {part.drills.map((drill, drillIndex) => (
                                   <li key={drillIndex}>{drill}</li>
                                 ))}
                               </ul>
-                            )}
+                            ) : null}
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
-                  {Array.isArray(week.dry) && week.dry.length > 0 && (
+                  {Array.isArray(week.dry) && week.dry.length > 0 ? (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">Bài tập khô</h5>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc ml-4">
+                      <h5 className="mb-2 font-semibold text-card-foreground">Bài tập khô</h5>
+                      <ul className="ml-4 list-disc space-y-1 text-sm text-muted-foreground">
                         {week.dry.map((item, index) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
                     </div>
-                  )}
+                  ) : null}
 
-                  {Array.isArray(week.checkpoints) && week.checkpoints.length > 0 && (
+                  {Array.isArray(week.checkpoints) && week.checkpoints.length > 0 ? (
                     <div>
-                      <h5 className="font-semibold mb-2 text-card-foreground">Tiêu chí hoàn thành</h5>
+                      <h5 className="mb-2 font-semibold text-card-foreground">Tiêu chí hoàn thành</h5>
                       <div className="space-y-1">
                         {week.checkpoints.map((checkpoint, index) => (
-                          <label key={index} className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "var(--secondary)" }} />
+                          <label key={index} className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded"
+                              style={{ accentColor: "var(--secondary)" }}
+                            />
                             <span className="text-sm text-muted-foreground">{checkpoint}</span>
                           </label>
                         ))}
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
-                  {Array.isArray(week.notesForConditions) && week.notesForConditions.length > 0 && (
-                    <div className="p-3 rounded-lg bg-amber-50 border-l-4 border-amber-400">
+                  {Array.isArray(week.notesForConditions) && week.notesForConditions.length > 0 ? (
+                    <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-3">
                       <p className="text-sm text-amber-900">
                         <strong>Lưu ý:</strong> {week.notesForConditions.join(" ")}
                       </p>
                     </div>
-                  )}
+                  ) : null}
 
-                  <button onClick={() => onAskWeek?.(week.week)} className="w-full py-2 text-sm rounded-lg border text-primary bg-sky-50">
+                  <button
+                    type="button"
+                    onClick={() => onAskWeek?.(week.week)}
+                    className="w-full rounded-lg border bg-sky-50 py-2 text-sm text-primary"
+                  >
                     Hỏi trợ lý về tuần này
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

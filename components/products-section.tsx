@@ -2,21 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cartStore } from "@/lib/local-store";
-import { formatPrice, products } from "@/lib/data/products";
+import { formatPrice, products, type Product } from "@/lib/data/products";
 
 const featuredProducts = products.filter((product) => product.category === "combo").slice(0, 2);
 
 export default function ProductsSection() {
-  const [addedId, setAddedId] = useState<string | null>(null);
-
-  const addToCart = async (productId: string) => {
-    await cartStore.add(productId);
-    setAddedId(productId);
-    window.setTimeout(() => setAddedId(null), 1800);
+  const handleContact = (product: Product) => {
+    const message = `Chào Floaty, tôi muốn mua/tư vấn sản phẩm "${product.name}" giá ${formatPrice(
+      product.price,
+    )}. Bạn hỗ trợ giúp tôi nhé.`;
+    const messengerLink = `https://m.me/865622756624048?text=${encodeURIComponent(message)}`;
+    window.open(messengerLink, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -43,8 +42,9 @@ export default function ProductsSection() {
                   <div className="flex-1 text-center sm:text-left">
                     <h3 className="text-2xl font-semibold text-gray-900 mb-2">{product.name}</h3>
                     <p className="text-xl font-semibold text-blue-600 mb-4">{formatPrice(product.price)}</p>
-                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => addToCart(product.id)}>
-                      {addedId === product.id ? "Đã thêm" : "Thêm vào giỏ"}
+                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => handleContact(product)}>
+                      <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                      Liên hệ mua
                     </Button>
                   </div>
                 </div>

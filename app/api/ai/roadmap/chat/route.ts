@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { callGeminiWithRetry } from "@/lib/ai/gemini";
+import { checkRateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,11 @@ function isGeminiApiKeyError(error: unknown) {
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(req, "ai-roadmap-chat", { limit: 20, windowMs: 10 * 60 * 1000 });
+    if (rateLimit.limited) {
+      return rateLimitResponse(rateLimit.resetAt);
+    }
+
     const parsed = chatRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Dữ liệu chat không hợp lệ." }, { status: 400 });

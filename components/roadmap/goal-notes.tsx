@@ -17,13 +17,11 @@ export default function GoalNotes({
       : fallback[goalKey || "suc-khoe"] || "Bám sát lộ trình và ưu tiên an toàn.";
 
   return (
-    <div className="rounded-2xl p-8 border bg-card">
-      <h3 className="text-xl font-bold mb-4 text-card-foreground">Ghi chú theo mục tiêu</h3>
-      <p className="text-muted-foreground leading-7">{text}</p>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button className="px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground">Tải PDF lộ trình</button>
-        <button className="px-4 py-2 rounded-lg font-medium border text-primary">Chỉnh theo tần suất</button>
-      </div>
-    </div>
+    <section className="rounded-2xl border bg-card p-8" aria-labelledby="goal-notes-title">
+      <h3 id="goal-notes-title" className="mb-4 text-xl font-bold text-card-foreground">
+        Ghi chú theo mục tiêu
+      </h3>
+      <p className="leading-7 text-muted-foreground">{text}</p>
+    </section>
   );
 }

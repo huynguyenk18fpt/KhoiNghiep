@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, MenuButton, MenuItems } from "@headlessui/react";
-import { ShoppingCart } from "lucide-react";
+import { Menu as HeadlessMenu, MenuButton, MenuItems } from "@headlessui/react";
+import { Menu as MenuIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
@@ -63,16 +63,8 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/cart"
-            className="rounded-full p-2 text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
-            aria-label="Giỏ hàng"
-          >
-            <ShoppingCart className="h-5 w-5" />
-          </Link>
-
           {loading ? null : user ? (
-            <Menu as="div" className="relative">
+            <HeadlessMenu as="div" className="relative">
               <MenuButton className="flex cursor-pointer items-center gap-2 transition-colors hover:text-blue-600">
                 <Image
                   src={user.avatar || "/placeholder-user.jpg"}
@@ -87,7 +79,6 @@ export default function Header() {
               <MenuItems className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-50 border">
                 {[
                   { label: "Xem profile", href: "/profile" },
-                  { label: "Giỏ hàng", href: "/cart" },
                 ].map((item) => (
                   <Link
                     key={item.href}
@@ -104,7 +95,7 @@ export default function Header() {
                   Đăng xuất
                 </button>
               </MenuItems>
-            </Menu>
+            </HeadlessMenu>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-blue-600">
@@ -115,6 +106,44 @@ export default function Header() {
               </Link>
             </div>
           )}
+
+          <HeadlessMenu as="div" className="relative md:hidden">
+            <MenuButton
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+              aria-label="Mở menu"
+            >
+              <MenuIcon className="h-5 w-5" aria-hidden="true" />
+            </MenuButton>
+            <MenuItems className="absolute right-0 z-50 mt-3 w-56 overflow-hidden rounded-lg border bg-white py-2 shadow-lg">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+              {!loading && !user ? (
+                <div className="mt-2 border-t px-4 pt-3">
+                  <Link href="/login" className="block py-2 text-sm font-medium text-gray-700 hover:text-blue-600">
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="mt-2 block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              ) : null}
+            </MenuItems>
+          </HeadlessMenu>
         </div>
       </div>
     </header>
